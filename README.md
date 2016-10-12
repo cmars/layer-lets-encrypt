@@ -31,6 +31,8 @@ def configure_webserver():
     status_set('active', 'Website available: https://%s' % fqdn)
 ```
 
+You'll want to use the `fqdn` for `server_name` in your nginx site config.
+
 Let's Encrypt registration may be disabled by setting the
 `lets-encrypt.disable` state. If you know your charm isn't ready to register,
 or doesn't need it -- maybe it's being TLS terminated by a front end -- please
@@ -55,15 +57,17 @@ Some things could be improved:
 - Better rate-limiting the registration retries.
 - Not attempting to register if not exposed (can this be detected?).
 
-Some things are probably out of scope. This layer is intended for securing
-standalone web applications:
+## NOT TODOs
+
+This layer is intended for securing standalone web applications. Some things
+are out of scope for this layer:
 
 - Registration behind an HTTP reverse proxy; alternative ports.
 - Other methods like webroot.
 - General purpose registration for charms that provide `interface:http` but
   don't use `layer:nginx`.
 
-However, this layer might be a good starting point to develop such things.
+However, this layer might be a useful example for developing such things.
 
 # License
 
