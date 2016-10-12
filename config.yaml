@@ -1,0 +1,7 @@
+options:
+  fqdn:                       
+    type: string               
+    description: Fully-Qualified Domain Name of server to register
+  contact-email:
+    type: string
+    description: Contact email for Let's Encrypt
