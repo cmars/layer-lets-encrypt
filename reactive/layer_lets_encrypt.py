@@ -36,6 +36,7 @@ def register_server():
         set_state('lets-encrypt.configured')
         return
 
+    needs_start = False
     if host.service_running('nginx'):
         needs_start = True
         host.service_stop('nginx')
