@@ -1,4 +1,4 @@
 series:
   - xenial
 terms:
-  - cloud-green/isrg-lets-encrypt
+  - isrg-lets-encrypt
