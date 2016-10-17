@@ -1,48 +1,67 @@
-import glob
-import os
-import shutil
+from subprocess import check_call
 
-from subprocess import check_call, check_output
+from charms.reactive import (
+    when,
+    when_not,
+    set_state,
+    remove_state,
+    hook
+)
 
-from charms.reactive import when, when_not, set_state, remove_state, hook
+from charmhelpers.core.host import (
+    lsb_release,
+    service_running,
+    service_start,
+    service_stop
+)
 
-from charmhelpers.core import hookenv, host
-from charmhelpers.fetch import apt_install
+from charmhelpers.core.hookenv import (
+    log,
+    config,
+    open_port,
+    status_set
+)
+
+import charms.apt
 
 
-@hook('install')
-def install():
-    series = check_output(['lsb_release', '-c', '-s'], universal_newlines=True).strip()
-    if series < 'xenial':
-        hookenv.log('letsencrypt not supported on series %s' % (series))
+@when_not('apt.installed.lets-encrypt')
+def check_version_and_install():
+    series = lsb_release()['DISTRIB_CODENAME']
+    if not series >= 'xenial':
+        log('letsencrypt not supported on series >= %s' % (series))
+        status_set('blocked', "Unsupported series < Xenial")
         return
-    set_state('lets-encrypt.installed')
+    else:
+        charms.apt.queue_install(['lets-encrypt'])
+        charms.apt.install_queued()
 
 
 @hook('config-changed')
 def config_changed():
-    config = hookenv.config()
-    if config.changed('fqdn') and config.previous('fqdn') or config.get('fqdn'):
+    configs = config()
+    if configs.changed('fqdn') and configs.previous('fqdn') \
+       or configs.get('fqdn'):
         remove_state('lets-encrypt.registered')
 
 
-@when('lets-encrypt.installed')
+@when('apt.installed.lets-encrypt')
 @when_not('lets-encrypt.registered')
 @when_not('lets-encrypt.disable')
 def register_server():
-    config = hookenv.config()
-    fqdn = config.get('fqdn')
+    configs = config()
+    fqdn = configs.get('fqdn')
     if not fqdn:
         set_state('lets-encrypt.configured')
         return
 
     needs_start = False
-    if host.service_running('nginx'):
+    if service_running('nginx'):
         needs_start = True
-        host.service_stop('nginx')
+        service_stop('nginx')
 
-    hookenv.open_port(80)
-    hookenv.open_port(443)
+    open_port(80)
+    open_port(443)
 
     mail_args = []
     if config.get('contact-email'):
@@ -51,14 +70,15 @@ def register_server():
     else:
         mail_args.append('--register-unsafely-without-email')
     try:
-        check_call(['letsencrypt', 'certonly', '--standalone',
-            '--agree-tos',  # Agreement already captured by terms, see metadata
-            '--non-interactive',
-            '-d', fqdn, *mail_args])
-        hookenv.status_set('active', 'registered %s' % (fqdn))
+        # Agreement already captured by terms, see metadata
+        le_cmd = ['letsencrypt', 'certonly', '--standalone', '--agree-tos',
+                  '--non-interactive', '-d', fqdn]
+        le_cmd.extend(mail_args)
+        check_call(le_cmd)
+        status_set('active', 'registered %s' % (fqdn))
         set_state('lets-encrypt.registered')
     except:
-        hookenv.status_set('blocked', 'letsencrypt registration failed')
+        status_set('blocked', 'letsencrypt registration failed')
     finally:
         if needs_start:
-            host.service_start('nginx')
+            service_start('nginx')
