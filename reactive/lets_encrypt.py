@@ -24,7 +24,7 @@ from charmhelpers.core.hookenv import (
 import charms.apt
 
 
-@when_not('apt.installed.lets-encrypt')
+@when_not('apt.installed.letsencrypt')
 def check_version_and_install():
     series = lsb_release()['DISTRIB_CODENAME']
     if not series >= 'xenial':
@@ -44,7 +44,7 @@ def config_changed():
         remove_state('lets-encrypt.registered')
 
 
-@when('apt.installed.lets-encrypt')
+@when('apt.installed.letsencrypt')
 @when_not('lets-encrypt.registered')
 @when_not('lets-encrypt.disable')
 def register_server():
