@@ -1,3 +1,11 @@
 includes:
   - layer:basic
-  - layer:nginx
+  - layer:apt
+defines:
+  service-name:
+    description: |
+        Name of the web application service that normally listens on ports
+        80/443. If set, this service will be stopped briefly during certificate
+        registration.
+    type: string
+    default: ""
