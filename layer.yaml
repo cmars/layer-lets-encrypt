@@ -1,5 +1,6 @@
 includes:
   - layer:basic
+  - layer:apt
 defines:
   service-name:
     description: |

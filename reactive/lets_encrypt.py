@@ -55,7 +55,7 @@ def register_server():
         set_state('lets-encrypt.configured')
         return
 
-    needs_start = stop_running_service()
+    needs_start = stop_running_web_service()
 
     open_port(80)
     open_port(443)
@@ -78,17 +78,19 @@ def register_server():
         status_set('blocked', 'letsencrypt registration failed')
     finally:
         if needs_start:
-            start_service()
+            start_web_service()
 
 
 def stop_running_web_service():
-    service_name = charms.layer.options('service-name')
+    service_name = charms.layer.options('lets-encrypt').get('service-name')
     if service_name and service_running(service_name):
+        log('stopping running service: %s' % (service_name))
         service_stop(service_name)
         return True
 
 
 def start_web_service():
-    service_name = charms.layer.options('service-name')
+    service_name = charms.layer.options('lets-encrypt').get('service-name')
     if service_name:
+        log('starting service: %s' % (service_name))
         service_start(service_name)
