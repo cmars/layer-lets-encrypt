@@ -63,9 +63,9 @@ def register_server():
     open_port(443)
 
     mail_args = []
-    if config.get('contact-email'):
+    if configs.get('contact-email'):
         mail_args.append('--email')
-        mail_args.append(config.get('contact-email'))
+        mail_args.append(configs.get('contact-email'))
     else:
         mail_args.append('--register-unsafely-without-email')
     try:
