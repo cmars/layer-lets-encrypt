@@ -10,11 +10,11 @@ layer will attempt to register the hostname with Let's Encrypt.
 
 When registered, the reactive state `lets-encrypt.registered` will be set.
 Then, in your charm, you may obtain the path to the certificates and keys with
-`charms.layer.letsencrypt.live()`, and configure nginx accordingly:
+`charms.layer.lets_encrypt.live()`, and configure nginx accordingly:
 
 ```python
 from charmhelpers.core import hookenv
-from charms.layer import letsencrypt
+from charms.layer import lets_encrypt
 
 ...
 
@@ -23,7 +23,7 @@ from charms.layer import letsencrypt
 def configure_webserver():
     status_set('maintenance', 'Configuring website')
 	fqdn = config().get('fqdn')
-    live = letsencrypt.live()
+    live = lets_encrypt.live()
     configure_site('myapp', 'myapp.nginx.tmpl',
                    key_path=live['privkey'],
                    crt_path=live['fullchain'], fqdn=fqdn)
