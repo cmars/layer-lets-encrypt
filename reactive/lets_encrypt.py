@@ -4,8 +4,7 @@ from charms.reactive import (
     when,
     when_not,
     set_state,
-    remove_state,
-    hook
+    remove_state
 )
 
 from charmhelpers.core.host import (
@@ -37,7 +36,7 @@ def check_version_and_install():
         charms.apt.install_queued()
 
 
-@hook('config-changed')
+@when('config.changed.fqdn')
 def config_changed():
     configs = config()
     if configs.changed('fqdn') and configs.previous('fqdn') \
