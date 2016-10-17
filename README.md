@@ -1,16 +1,58 @@
 # layer-lets-encrypt
 
-# Usage
+# Operation
 
-Include `layer:lets-encrypt` in your `layer.yaml` where you'd use
-`layer:nginx`. `layer:lets-encrypt` includes `layer:nginx`.
+General information for operating charms built with layer:lets-encrypt.
 
-This layer adds a config option `fqdn` to your `config.yaml`. When set, this
-layer will attempt to register the hostname with Let's Encrypt.
+## Requirements
 
-When registered, the reactive state `lets-encrypt.registered` will be set.
-Then, in your charm, you may obtain the path to the certificates and keys with
-`charms.layer.lets_encrypt.live()`, and configure nginx accordingly:
+Let's Encrypt registration will only work in deployments that meet the
+following criteria:
+
+- Placement onto a machine with a public IPv4 address. IPv6 might work (Let's
+  Encrypt supports it), but this is unconfirmed.
+  - Container placement will not work. Containers aren't typically publicly
+    route-able.
+  - Private networks will not work. For private TLS, I recommend using
+    layer:tls-client with easyrsa.
+- Registered DNS "A" record for the above public address.
+  - Must be a domain name allowed by Let's Encrypt. Some, such as
+    *.amazonaws.com dynamic addresses, are not allowed.
+- Must be exposed (`juju expose`) so that Let's Encrypt can reach it for
+  registration.
+
+## Configuration
+
+This layer adds a config option `fqdn` to `config.yaml`. When set, this layer
+will attempt to register the hostname with Let's Encrypt. Only set `fqdn`:
+- _After_ the DNS "A" record has been established for the unit's public IP
+  address.
+- The registered domain name has had time to propagate.
+- The application has been `juju expose`d.
+
+A `contact-email` config option may also be set, for receiving email from Let's
+Encrypt regarding certification of the domain name.
+
+# Development
+
+Include `layer:lets-encrypt` in your web application charms to automatically
+obtain TLS certificates from Let's Encrypt.
+
+Once the application is registered with Let's Encrypt, the reactive state
+`lets-encrypt.registered` will be set. Then, in your charm, you may obtain the
+path to the certificates and keys with `charms.layer.lets_encrypt.live()`.
+
+## Using with layer:nginx
+
+Configure layer:lets-encrypt to restart nginx during registration:
+
+```yaml
+options:
+  lets-encrypt:
+    service-name: nginx
+```
+
+Use the obtained certificates in your charm layer. For example:
 
 ```python
 from charmhelpers.core import hookenv
@@ -40,8 +82,8 @@ set this to avoid wasting Let's Encrypt resources.
 
 # Caveats
 
-nginx will be temporarily stopped while Let's Encrypt registers with the
-"standalone" method.
+The configured `service-name` will be temporarily stopped while Let's Encrypt
+registers with the "standalone" method.
 
 This layer is only supported on xenial. If deployed on earlier series, this
 layer does nothing.
@@ -54,20 +96,10 @@ order to deploy, because registration is done non-interactively in the charm.
 Some things could be improved:
 
 - Support for automatic renewals, or even manual renewals with an action.
-- Better rate-limiting the registration retries.
+- Better rate-limiting of the registration retries.
 - Not attempting to register if not exposed (can this be detected?).
-
-## NOT TODOs
-
-This layer is intended for securing standalone web applications. Some things
-are out of scope for this layer:
-
-- Registration behind an HTTP reverse proxy; alternative ports.
-- Other methods like webroot.
-- General purpose registration for charms that provide `interface:http` but
-  don't use `layer:nginx`.
-
-However, this layer might be a useful example for developing such things.
+- Not attempting to register if FQDN isn't ready, or is incorrect.
+- Non-interrupting methods like webroot.
 
 # License
 
