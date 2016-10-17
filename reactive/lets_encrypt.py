@@ -32,7 +32,7 @@ def check_version_and_install():
         status_set('blocked', "Unsupported series < Xenial")
         return
     else:
-        charms.apt.queue_install(['lets-encrypt'])
+        charms.apt.queue_install(['letsencrypt'])
         charms.apt.install_queued()
 
 
