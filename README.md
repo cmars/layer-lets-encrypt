@@ -104,4 +104,3 @@ Some things could be improved:
 # License
 
 See LICENSE.layer-lets-encrypt for details.
-
