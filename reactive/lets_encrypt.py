@@ -1,11 +1,11 @@
-from subprocess import check_call
-
-from charms.reactive import (
-    when,
-    when_not,
-    set_state,
-    remove_state
+from subprocess import (
+    check_call,
+    check_output,
+    CalledProcessError
 )
+import random
+
+from crontab import CronTab
 
 from charmhelpers.core.host import (
     lsb_release,
@@ -21,8 +21,16 @@ from charmhelpers.core.hookenv import (
     status_set
 )
 
-import charms.apt
-import charms.layer
+from charms.reactive import (
+    when,
+    when_all,
+    when_not,
+    set_state,
+    remove_state
+)
+
+from charms import layer
+from charms import apt
 
 
 @when_not('apt.installed.letsencrypt')
@@ -33,8 +41,8 @@ def check_version_and_install():
         status_set('blocked', "Unsupported series < Xenial")
         return
     else:
-        charms.apt.queue_install(['letsencrypt'])
-        charms.apt.install_queued()
+        apt.queue_install(['letsencrypt'])
+        apt.install_queued()
 
 
 @when('config.changed.fqdn')
@@ -74,15 +82,62 @@ def register_server():
         check_call(le_cmd)
         status_set('active', 'registered %s' % (fqdn))
         set_state('lets-encrypt.registered')
-    except:
+    except CalledProcessError:
         status_set('blocked', 'letsencrypt registration failed')
+    finally:
+        if needs_start:
+            start_web_service()
+    unconfigure_periodic_renew()
+    configure_periodic_renew()
+
+
+@when_all(
+    'apt.installed.letsencrypt',
+    'lets-encrypt.registered',
+    # This state is set twice each day by crontab. This
+    # handler will be run in the next update-status hook.
+    'lets-encrypt.renew.requested',
+)
+@when_not(
+    'lets-encrypt.disable',
+    'lets-encrypt.renew.disable',
+)
+def renew_cert():
+    remove_state('lets-encrypt.renew.requested')
+    # We don't want to stop the webserver if no renew is needed.
+    if no_renew_needed():
+        return
+    print("Renewing certificate...")
+    configs = config()
+    fqdn = configs.get('fqdn')
+    needs_start = stop_running_web_service()
+    open_port(80)
+    open_port(443)
+    try:
+        check_call(['letsencrypt', 'renew', '--agree-tos'])
+        status_set('active', 'registered %s' % (fqdn))
+        set_state('lets-encrypt.renewed')
+    except CalledProcessError:
+        status_set('blocked', 'letsencrypt renewal failed')
     finally:
         if needs_start:
             start_web_service()
 
 
+def no_renew_needed():
+    # If renew is needed, the following call might fail because the needed
+    # ports are in use. We catch this because we only need to know if a
+    # renew was attempted, not if it succeeded.
+    try:
+        output = check_output(
+            ['letsencrypt', 'renew', '--agree-tos'], universal_newlines=True)
+    except CalledProcessError as error:
+        output = error.output
+    return "No renewals were attempted." in output
+
+
 def stop_running_web_service():
-    service_name = charms.layer.options('lets-encrypt').get('service-name')
+    service_name = layer.options('lets-encrypt').get('service-name')
     if service_name and service_running(service_name):
         log('stopping running service: %s' % (service_name))
         service_stop(service_name)
@@ -90,7 +145,27 @@ def stop_running_web_service():
 
 
 def start_web_service():
-    service_name = charms.layer.options('lets-encrypt').get('service-name')
+    service_name = layer.options('lets-encrypt').get('service-name')
     if service_name:
         log('starting service: %s' % (service_name))
         service_start(service_name)
+
+
+def configure_periodic_renew():
+    cron = CronTab(user='root')
+    jobRenew = cron.new(
+        command='charms.reactive set_state lets-encrypt.renew.requested',
+        comment="Renew Let's Encrypt [managed by Juju]")
+    # Twice a day, random minute per certbot instructions
+    # https://certbot.eff.org/all-instructions/
+    jobRenew.setall('{} 6,18 * * *'.format(random.randint(1, 59)))
+    jobRenew.enable()
+    cron.write()
+
+
+def unconfigure_periodic_renew():
+    cron = CronTab(user='root')
+    jobs = cron.find_comment(comment="Renew Let's Encrypt [managed by Juju]")
+    for job in jobs:
+        cron.remove(job)
+    cron.write()

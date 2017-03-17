@@ -1,8 +1,8 @@
 # layer-lets-encrypt
 
-# Operation
+# Operating a Charm that uses this layer
 
-General information for operating charms built with layer:lets-encrypt.
+Charms using this layer will automatically request and renew a Let's Encrypt certificate for the `fqdn` specified in the Charm config.
 
 ## Requirements
 
@@ -30,19 +30,17 @@ will attempt to register the hostname with Let's Encrypt. Only set `fqdn`:
 - The registered domain name has had time to propagate.
 - The application has been `juju expose`d.
 
-A `contact-email` config option may also be set, for receiving email from Let's
-Encrypt regarding certification of the domain name.
+A `contact-email` config option may also be set, for receiving email from Let's Encrypt regarding certification of the domain name. *Note that changing `contact-email` after the certificate has been requested will not have any effect.*
 
-# Development
+# Developing a Charm with this layer
 
-Include `layer:lets-encrypt` in your web application charms to automatically
-obtain TLS certificates from Let's Encrypt.
+Include `layer:lets-encrypt` in your web application charm and set the `fqdn` config option to automatically obtain a TLS certificate from Let's Encrypt.
 
 Once the application is registered with Let's Encrypt, the reactive state
 `lets-encrypt.registered` will be set. Then, in your charm, you may obtain the
 path to the certificates and keys with `charms.layer.lets_encrypt.live()`.
 
-## Using with layer:nginx
+## Example: Using with layer:nginx
 
 Configure layer:lets-encrypt to restart nginx during registration:
 
@@ -80,10 +78,14 @@ Let's Encrypt registration may be disabled by setting the
 or doesn't need it -- maybe it's being TLS terminated by a front end -- please
 set this to avoid wasting Let's Encrypt resources.
 
+Certificate renewal may be disabled by setting the `lets-encrypt.renew.disable`
+state. Set this to prevent the `lets-encrypt` layer from temporarily stopping
+the configured `service-name` during certificate renewal.
+
 # Caveats
 
 The configured `service-name` will be temporarily stopped while Let's Encrypt
-registers with the "standalone" method.
+registers and renews with the "standalone" method.
 
 This layer is only supported on xenial. If deployed on earlier series, this
 layer does nothing.
@@ -95,7 +97,6 @@ order to deploy, because registration is done non-interactively in the charm.
 
 Some things could be improved:
 
-- Support for automatic renewals, or even manual renewals with an action.
 - Better rate-limiting of the registration retries.
 - Not attempting to register if not exposed (can this be detected?).
 - Not attempting to register if FQDN isn't ready, or is incorrect.
