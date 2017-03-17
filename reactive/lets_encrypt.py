@@ -63,10 +63,16 @@ def register_server():
         set_state('lets-encrypt.configured')
         return
 
-    needs_start = stop_running_web_service()
-
     open_port(80)
     open_port(443)
+    # If the ports haven't been opened in a previous hook, they won't be open,
+    # so opened_ports won't return them.
+    ports = opened_ports()
+    if not ('80/tcp' in ports or '443/tcp' in ports):
+        status_set('waiting', 'Waiting for ports to open (will happen in next hook)')
+        return
+
+    needs_start = stop_running_web_service()
 
     mail_args = []
     if configs.get('contact-email'):
@@ -169,3 +175,8 @@ def unconfigure_periodic_renew():
     for job in jobs:
         cron.remove(job)
     cron.write()
+
+
+def opened_ports():
+    output = check_output(['opened-ports'], universal_newlines=True)
+    return output.split()
