@@ -1,3 +1,4 @@
+import os
 from subprocess import (
     check_call,
     check_output,
@@ -158,9 +159,12 @@ def start_web_service():
 
 
 def configure_periodic_renew():
+    command = ('export CHARM_DIR="{}"; '
+               '/usr/local/bin/charms.reactive set_state lets-encrypt.renew.requested '
+               ''.format(os.environ['CHARM_DIR']))
     cron = CronTab(user='root')
     jobRenew = cron.new(
-        command='charms.reactive set_state lets-encrypt.renew.requested',
+        command=command,
         comment="Renew Let's Encrypt [managed by Juju]")
     # Twice a day, random minute per certbot instructions
     # https://certbot.eff.org/all-instructions/
