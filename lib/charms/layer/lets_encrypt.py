@@ -13,4 +13,5 @@ def live():
         'chain': '/etc/letsencrypt/live/%s/chain.pem' % (fqdn),
         'cert': '/etc/letsencrypt/live/%s/cert.pem' % (fqdn),
         'privkey': '/etc/letsencrypt/live/%s/privkey.pem' % (fqdn),
+        'dhparam': '/etc/letsencrypt/dhparam.pem',
     }
