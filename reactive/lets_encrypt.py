@@ -1,8 +1,8 @@
 import os
 from subprocess import (
-    check_call,
     check_output,
-    CalledProcessError
+    CalledProcessError,
+    STDOUT
 )
 import random
 from shutil import copyfile
@@ -71,7 +71,9 @@ def register_server():
     # so opened_ports won't return them.
     ports = opened_ports()
     if not ('80/tcp' in ports or '443/tcp' in ports):
-        status_set('waiting', 'Waiting for ports to open (will happen in next hook)')
+        status_set(
+            'waiting',
+            'Waiting for ports to open (will happen in next hook)')
         return
 
     needs_start = stop_running_web_service()
@@ -87,11 +89,18 @@ def register_server():
         le_cmd = ['letsencrypt', 'certonly', '--standalone', '--agree-tos',
                   '--non-interactive', '-d', fqdn]
         le_cmd.extend(mail_args)
-        check_call(le_cmd)
+        output = check_output(
+            le_cmd,
+            universal_newlines=True,
+            stderr=STDOUT)
+        print(output)  # So output shows up in logs
         status_set('active', 'registered %s' % (fqdn))
         set_state('lets-encrypt.registered')
-    except CalledProcessError:
-        status_set('blocked', 'letsencrypt registration failed')
+    except CalledProcessError as err:
+        status_set(
+            'blocked',
+            'letsencrypt registration failed: \n{}'.format(err.output))
+        print(err.output)  # So output shows up in logs
     finally:
         if needs_start:
             start_web_service()
@@ -123,11 +132,18 @@ def renew_cert():
     open_port(80)
     open_port(443)
     try:
-        check_call(['letsencrypt', 'renew', '--agree-tos'])
+        output = check_output(
+            ['letsencrypt', 'renew', '--agree-tos'],
+            universal_newlines=True,
+            stderr=STDOUT)
+        print(output)  # So output shows up in logs
         status_set('active', 'registered %s' % (fqdn))
         set_state('lets-encrypt.renewed')
-    except CalledProcessError:
-        status_set('blocked', 'letsencrypt renewal failed')
+    except CalledProcessError as err:
+        status_set(
+            'blocked',
+            'letsencrypt renewal failed: \n{}'.format(err.output))
+        print(err.output)  # So output shows up in logs
     finally:
         if needs_start:
             start_web_service()
@@ -186,7 +202,9 @@ def unconfigure_periodic_renew():
 
 
 def create_dhparam():
-    copyfile('{}/files/dhparam.pem'.format(charm_dir()), '/etc/letsencrypt/dhparam.pem')
+    copyfile(
+        '{}/files/dhparam.pem'.format(charm_dir()),
+        '/etc/letsencrypt/dhparam.pem')
 
 
 def opened_ports():
