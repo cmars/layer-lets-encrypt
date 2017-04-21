@@ -38,7 +38,13 @@ Include `layer:lets-encrypt` in your web application charm and set the `fqdn` co
 
 Once the application is registered with Let's Encrypt, the reactive state
 `lets-encrypt.registered` will be set. Then, in your charm, you may obtain the
-path to the certificates and keys with `charms.layer.lets_encrypt.live()`.
+path to the certificates and keys with `charms.layer.lets_encrypt.live()`. This will return a dictionary with the following keys:
+
+ - **`privkey`**: Private key for the certificate. *`SSLCertificateKeyFile` in Apache and `ssl_certificate_key` in NGINX.*
+ - **`fullchain`**: All certificates, including server certificate (aka leaf certificate or end-entity certificate). The server certificate is the first one in this file, followed by any intermediates. *`SSLCertificateFile` in Apache and `ssl_certificate` in NGINX.*
+ - **`dhparam`**: Secure Diffie Hellman parameters as defined by [ietf RFC3526](https://tools.ietf.org/html/rfc3526#page-5) *`SSLOpenSSLConfCmd DHParameters` in Apache and `ssl_dhparam` in NGINX.*
+ - `cert`: The server certificate.
+ - `chain`: The additional intermediate certificates that web browsers will need in order to validate the server certificate.
 
 ## Example: Using with layer:nginx
 

@@ -5,6 +5,7 @@ from subprocess import (
     CalledProcessError
 )
 import random
+from shutil import copyfile
 
 from crontab import CronTab
 
@@ -19,7 +20,8 @@ from charmhelpers.core.hookenv import (
     log,
     config,
     open_port,
-    status_set
+    status_set,
+    charm_dir
 )
 
 from charms.reactive import (
@@ -61,7 +63,6 @@ def register_server():
     configs = config()
     fqdn = configs.get('fqdn')
     if not fqdn:
-        set_state('lets-encrypt.configured')
         return
 
     open_port(80)
@@ -96,6 +97,7 @@ def register_server():
             start_web_service()
     unconfigure_periodic_renew()
     configure_periodic_renew()
+    create_dhparam()
 
 
 @when_all(
@@ -181,6 +183,10 @@ def unconfigure_periodic_renew():
     for job in jobs:
         cron.remove(job)
     cron.write()
+
+
+def create_dhparam():
+    copyfile('{}/files/dhparam.pem'.format(charm_dir()), '/etc/letsencrypt/dhparam.pem')
 
 
 def opened_ports():
