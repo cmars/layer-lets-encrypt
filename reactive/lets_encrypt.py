@@ -9,6 +9,7 @@ from shutil import copyfile
 
 from crontab import CronTab
 
+from charmhelpers.core import unitdata
 from charmhelpers.core.host import (
     lsb_release,
     service_running,
@@ -26,6 +27,7 @@ from charmhelpers.core.hookenv import (
 
 from charms.reactive import (
     when,
+    when_any,
     when_all,
     when_not,
     set_state,
@@ -57,13 +59,21 @@ def config_changed():
 
 
 @when('apt.installed.letsencrypt')
+@when_any(
+    'lets-encrypt.certificate-requested',
+    'config.set.fqdn',
+)
 @when_not('lets-encrypt.registered')
 @when_not('lets-encrypt.disable')
 def register_server():
     configs = config()
-    fqdn = configs.get('fqdn')
-    if not fqdn:
+    # Get all certificate requests
+    requests = unitdata.kv().get('certificate.requests', [])
+    if not requests and not configs.get('fqdn'):
         return
+    if configs.get('fqdn'):
+        requests.append({'fqdn': [configs.get('fqdn')],
+                         'contact-email': configs.get('contact-email', '')})
 
     open_port(80)
     open_port(443)
@@ -75,38 +85,11 @@ def register_server():
             'waiting',
             'Waiting for ports to open (will happen in next hook)')
         return
-
-    needs_start = stop_running_web_service()
-
-    mail_args = []
-    if configs.get('contact-email'):
-        mail_args.append('--email')
-        mail_args.append(configs.get('contact-email'))
-    else:
-        mail_args.append('--register-unsafely-without-email')
-    try:
-        # Agreement already captured by terms, see metadata
-        le_cmd = ['letsencrypt', 'certonly', '--standalone', '--agree-tos',
-                  '--non-interactive', '-d', fqdn]
-        le_cmd.extend(mail_args)
-        output = check_output(
-            le_cmd,
-            universal_newlines=True,
-            stderr=STDOUT)
-        print(output)  # So output shows up in logs
-        status_set('active', 'registered %s' % (fqdn))
-        set_state('lets-encrypt.registered')
-    except CalledProcessError as err:
-        status_set(
-            'blocked',
-            'letsencrypt registration failed: \n{}'.format(err.output))
-        print(err.output)  # So output shows up in logs
-    finally:
-        if needs_start:
-            start_web_service()
+    create_certificates(requests)
     unconfigure_periodic_renew()
     configure_periodic_renew()
     create_dhparam()
+    set_state('lets-encrypt.registered')
 
 
 @when_all(
@@ -210,3 +193,44 @@ def create_dhparam():
 def opened_ports():
     output = check_output(['opened-ports'], universal_newlines=True)
     return output.split()
+
+
+def create_certificates(requests):
+    for cert_request in requests:
+        # Check if there are no conflicts
+        # If a fqdn is already present, do not create a new one
+        fqdnpaths = []
+        for fqdn in cert_request['fqdn']:
+            fqdnpaths.append('/etc/letsencrypt/live/' + fqdn)
+        if any([os.path.isdir(f) for f in fqdnpaths]):
+            continue  # Cert already exists
+        needs_start = stop_running_web_service()
+
+        mail_args = []
+        if cert_request['contact-email']:
+            mail_args.append('--email')
+            mail_args.append(cert_request['contact-email'])
+        else:
+            mail_args.append('--register-unsafely-without-email')
+        try:
+            # Agreement already captured by terms, see metadata
+            le_cmd = ['letsencrypt', 'certonly', '--standalone', '--agree-tos',
+                      '--non-interactive']
+            for fqdn in cert_request['fqdn']:
+                le_cmd.extend(['-d', fqdn])
+            le_cmd.extend(mail_args)
+            output = check_output(
+                le_cmd,
+                universal_newlines=True,
+                stderr=STDOUT)
+            print(output)  # So output shows up in logs
+            status_set('active', 'registered %s' % (fqdn))
+
+        except CalledProcessError as err:
+            status_set(
+                'blocked',
+                'letsencrypt registration failed: \n{}'.format(err.output))
+            print(err.output)  # So output shows up in logs
+        finally:
+            if needs_start:
+                start_web_service()

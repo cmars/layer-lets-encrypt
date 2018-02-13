@@ -1,3 +1,4 @@
+
 # layer-lets-encrypt
 
 # Operating a Charm that uses this layer
@@ -34,6 +35,10 @@ A `contact-email` config option may also be set, for receiving email from Let's 
 
 # Developing a Charm with this layer
 
+## Single certificate
+
+Follow these steps if you only need a single certificate set via the charm config options.
+
 Include `layer:lets-encrypt` in your web application charm and set the `fqdn` config option to automatically obtain a TLS certificate from Let's Encrypt.
 
 Once the application is registered with Let's Encrypt, the reactive state
@@ -46,7 +51,7 @@ path to the certificates and keys with `charms.layer.lets_encrypt.live()`. This 
  - `cert`: The server certificate.
  - `chain`: The additional intermediate certificates that web browsers will need in order to validate the server certificate.
 
-## Example: Using with layer:nginx
+### Example: Using with layer:nginx
 
 Configure layer:lets-encrypt to restart nginx during registration:
 
@@ -88,6 +93,45 @@ Certificate renewal may be disabled by setting the `lets-encrypt.renew.disable`
 state. Set this to prevent the `lets-encrypt` layer from temporarily stopping
 the configured `service-name` during certificate renewal.
 
+
+## Multiple certificates
+
+Include `layer:lets-encrypt` in your charm and use `charms.layer.lets_encrypt.set_requested_certificates(requests)` to create multiple certificates. `requests` has the following format:
+```
+[
+    {
+        'fqdn': ['example.com', 'blog.example.com'], # Covers multiple domains with one certificate
+        'contact_email': ''
+    },
+    {
+        'fqdn': ['sample.com'],
+        'contact_email': 'foo@sample.com'
+    },
+    ...
+]
+```
+Obtain the path to the certificates with `charms.layer.lets_encrypt.live_all()`. This will return a dictionary with the fqdn's as keys and a dictionary with the same keys as described above from `live()`. In case of multiple domains certificate only one fqdn will be present.
+
+Following the example above, `live_all()` could return the following output:
+```
+{
+    'example.com': {
+                       'privkey': '',
+                       'fullchain': '',
+                       'cert': '',
+                       'chain': '',
+                       'dhparam': '',
+                   }
+     'sample.com': {
+                       'privkey': '',
+                       'fullchain': '',
+                       'cert': '',
+                       'chain': '',
+                       'dhparam': '',
+                   }
+}
+```
+ 
 # Caveats
 
 The configured `service-name` will be temporarily stopped while Let's Encrypt
