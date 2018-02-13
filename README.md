@@ -35,9 +35,9 @@ A `contact-email` config option may also be set, for receiving email from Let's 
 
 # Developing a Charm with this layer
 
-## Single certificate
+## Single FQDN
 
-Follow these steps if you only need a single certificate set via the charm config options.
+Follow these steps if you need a single certificate for a single domain name. This is the legacy way of using the lets-encrypt layer where an admin specifies the fqdn using a config option.
 
 Include `layer:lets-encrypt` in your web application charm and set the `fqdn` config option to automatically obtain a TLS certificate from Let's Encrypt.
 
@@ -94,7 +94,9 @@ state. Set this to prevent the `lets-encrypt` layer from temporarily stopping
 the configured `service-name` during certificate renewal.
 
 
-## Multiple certificates
+## Multiple FQDNs
+
+Follow these steps if you need multiple certificates for multiple domain names. The FQDNs need to be set by a higher layer. You can use both methods (single and multiple fqdns) at the same time. If both the config option is set and `set_requested_certificates` is called, then a certificate will be generated for all fqdns.
 
 Include `layer:lets-encrypt` in your charm and use `charms.layer.lets_encrypt.set_requested_certificates(requests)` to create multiple certificates. `requests` has the following format:
 ```
