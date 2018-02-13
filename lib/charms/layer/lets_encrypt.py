@@ -49,7 +49,7 @@ def set_requested_certificates(requests):
     """takes a list of requests which has the following format:
         [{
             'fqdn': ['example.com', 'blog.example.com'],
-            'contact_email': 'example@example.com'
+            'contact-email': 'example@example.com'
         }]
         each list item will request one certificate.
     """

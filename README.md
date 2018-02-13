@@ -105,7 +105,7 @@ Include `layer:lets-encrypt` in your charm and use `charms.layer.lets_encrypt.se
     },
     {
         'fqdn': ['sample.com'],
-        'contact_email': 'foo@sample.com'
+        'contact-email': 'foo@sample.com'
     },
     ...
 ]
