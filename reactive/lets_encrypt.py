@@ -1,4 +1,5 @@
 import os
+import shutil
 from subprocess import (
     check_output,
     CalledProcessError,
@@ -167,9 +168,11 @@ def start_web_service():
 def configure_periodic_renew():
     command = (
         'export CHARM_DIR="{}"; '
-        '/usr/local/bin/charms.reactive '
+        '{} '
         'set_state lets-encrypt.renew.requested '
-        ''.format(os.environ['CHARM_DIR']))
+        ''.format(
+            os.environ['CHARM_DIR'],
+            shutil.which("charms.reactive")))
     cron = CronTab(user='root')
     jobRenew = cron.new(
         command=command,
