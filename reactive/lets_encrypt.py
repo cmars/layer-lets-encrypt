@@ -1,11 +1,12 @@
+#!/usr/bin/env python3
 import os
-import shutil
 from subprocess import (
     check_output,
     CalledProcessError,
     STDOUT
 )
 import random
+import shutil
 from shutil import copyfile
 
 from crontab import CronTab
