@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import os
 from subprocess import (
     check_output,
@@ -5,6 +6,7 @@ from subprocess import (
     STDOUT
 )
 import random
+import shutil
 from shutil import copyfile
 
 from crontab import CronTab
@@ -48,6 +50,12 @@ def check_version_and_install():
     else:
         apt.queue_install(['letsencrypt'])
         apt.install_queued()
+        # open ports during installation to prevent a scenario where
+        # we need to wait for the update-status hook to request
+        # certificates because Juju hasn't opened the ports yet and
+        # no other hook is queued to run.
+        open_port(80)
+        open_port(443)
 
 
 @when('config.changed.fqdn')
@@ -75,8 +83,6 @@ def register_server():
         requests.append({'fqdn': [configs.get('fqdn')],
                          'contact-email': configs.get('contact-email', '')})
 
-    open_port(80)
-    open_port(443)
     # If the ports haven't been opened in a previous hook, they won't be open,
     # so opened_ports won't return them.
     ports = opened_ports()
@@ -85,11 +91,12 @@ def register_server():
             'waiting',
             'Waiting for ports to open (will happen in next hook)')
         return
-    create_certificates(requests)
-    unconfigure_periodic_renew()
-    configure_periodic_renew()
-    create_dhparam()
-    set_state('lets-encrypt.registered')
+    if create_certificates(requests):
+        unconfigure_periodic_renew()
+        configure_periodic_renew()
+        create_dhparam()
+        set_state('lets-encrypt.registered')
+
 
 
 @when_all(
@@ -162,9 +169,11 @@ def start_web_service():
 def configure_periodic_renew():
     command = (
         'export CHARM_DIR="{}"; '
-        '/usr/local/bin/charms.reactive '
+        '{} '
         'set_state lets-encrypt.renew.requested '
-        ''.format(os.environ['CHARM_DIR']))
+        ''.format(
+            os.environ['CHARM_DIR'],
+            shutil.which("charms.reactive")))
     cron = CronTab(user='root')
     jobRenew = cron.new(
         command=command,
@@ -231,6 +240,8 @@ def create_certificates(requests):
                 'blocked',
                 'letsencrypt registration failed: \n{}'.format(err.output))
             print(err.output)  # So output shows up in logs
+            return False
         finally:
             if needs_start:
                 start_web_service()
+    return True

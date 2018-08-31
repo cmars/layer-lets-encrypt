@@ -26,7 +26,7 @@ def live():
 def live_all():
     """live_all returns a dict containing per fqdn the paths of certificate and
     key files.
-    
+
     Multiple domain certificates will only return one dict using one of the fqdn as key."""
     requests = unitdata.kv().get('certificate.requests', [])
     if not requests:
@@ -57,4 +57,5 @@ def set_requested_certificates(requests):
         return
     unitdata.kv().set('certificate.requests', requests)
     remove_state('lets-encrypt.registered')
+    remove_state('lets-encrypt.certificate-requested') # reset so handler will rerun even if it already ran
     set_state('lets-encrypt.certificate-requested')
