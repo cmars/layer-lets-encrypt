@@ -42,8 +42,8 @@ from charms import apt
 
 @when_not('apt.installed.letsencrypt')
 def check_version_and_install():
-    series = lsb_release()['DISTRIB_CODENAME']
-    if not series >= 'xenial':
+    series = lsb_release()['DISTRIB_RELEASE']
+    if not series >= '16.04':
         log('letsencrypt not supported on series >= %s' % (series))
         status_set('blocked', "Unsupported series < Xenial")
         return
