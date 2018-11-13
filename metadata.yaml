@@ -1,4 +1,5 @@
 series:
   - xenial
+  - bionic
 terms:
   - isrg-lets-encrypt

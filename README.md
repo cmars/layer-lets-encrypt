@@ -139,7 +139,7 @@ Following the example above, `live_all()` could return the following output:
 The configured `service-name` will be temporarily stopped while Let's Encrypt
 registers and renews with the "standalone" method.
 
-This layer is only supported on xenial. If deployed on earlier series, this
+This layer is only supported on xenial and above. If deployed on earlier series, this
 layer does nothing.
 
 This layer requires agreement to the ISRG Let's Encrypt terms of service in
